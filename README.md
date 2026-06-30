@@ -4,8 +4,10 @@
 
   <h1>Built with AI Studio</h2>
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+Version 4 of Zeta Music
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+What is improved:
 
-</div>
+UI refresh
+more coming soon
+Not affilliated with original zeta music. Soon hopefully though :)
