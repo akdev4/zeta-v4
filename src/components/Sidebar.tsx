@@ -41,7 +41,7 @@ export default function Sidebar({
           <h1 className="text-sm font-bold tracking-widest text-white flex items-center gap-1">
             ZETA MUSIC
           </h1>
-          <p className="text-[10px] text-zinc-500 font-mono">browser audio cache</p>
+          <p className="text-[10px] text-zinc-500 font-mono">browser audio</p>
         </div>
       </div>
 

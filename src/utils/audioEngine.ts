@@ -190,6 +190,10 @@ class AudioEngine {
     return this.audioElement ? this.audioElement.currentTime : 0;
   }
 
+  public getAudioSrc(): string {
+    return this.audioElement ? this.audioElement.src : "";
+  }
+
   // ---------------- SOUND SYNTHESIS METHODS ----------------
   
   private playNoise(duration: number, lowpassFreq: number, highpassFreq?: number, gain = 1) {

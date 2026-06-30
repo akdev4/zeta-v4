@@ -25,21 +25,43 @@ export default function App() {
     return INITIAL_PLAYLISTS;
   });
 
+  const [customTracks, setCustomTracks] = useState<Track[]>(() => {
+    const saved = localStorage.getItem("zeta_custom_tracks");
+    try {
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
   const [activeTrack, setActiveTrack] = useState<Track | null>(() => {
-    return TRACKS[0]; // Mellow Summer Breeze by default
+    const saved = localStorage.getItem("zeta_custom_tracks");
+    try {
+      const parsed = saved ? JSON.parse(saved) : [];
+      return parsed.length > 0 ? parsed[0] : null;
+    } catch (e) {
+      return null;
+    }
   });
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(0.8);
 
   const [favorites, setFavorites] = useState<string[]>(() => {
     const saved = localStorage.getItem("zeta_favorites");
-    return saved ? JSON.parse(saved) : ["stream-lofi"];
+    try {
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
   });
 
   const [visualizerMode, setVisualizerMode] = useState<"bars" | "circle" | "particles" | "retroGrid">("bars");
 
   const [isShuffle, setIsShuffle] = useState(false);
   const [isRepeat, setIsRepeat] = useState(false);
+
+  // Combine default tracks with custom added online tracks
+  const allTracks = [...TRACKS, ...customTracks];
 
   // Save favorites to LocalStorage
   useEffect(() => {
@@ -50,6 +72,11 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("zeta_playlists", JSON.stringify(playlists));
   }, [playlists]);
+
+  // Save custom online tracks metadata to LocalStorage
+  useEffect(() => {
+    localStorage.setItem("zeta_custom_tracks", JSON.stringify(customTracks));
+  }, [customTracks]);
 
   // Set initial volume
   useEffect(() => {
@@ -66,7 +93,13 @@ export default function App() {
       audioEngine.pauseStream();
       setIsPlaying(false);
     } else {
-      audioEngine.resumeStream();
+      // Check if current loaded audio src matches activeTrack's URL
+      const currentSrc = audioEngine.getAudioSrc ? audioEngine.getAudioSrc() : "";
+      if (activeTrack.audioUrl && (!currentSrc || !currentSrc.includes(activeTrack.audioUrl))) {
+        audioEngine.playStream(activeTrack.audioUrl);
+      } else {
+        audioEngine.resumeStream();
+      }
       setIsPlaying(true);
     }
   };
@@ -87,7 +120,7 @@ export default function App() {
     if (!activeTrack) return;
 
     const playlist = playlists.find((p) => p.id === selectedPlaylistId) || playlists[0];
-    const trackIds = playlist.trackIds;
+    const trackIds = selectedPlaylistId === "all" ? allTracks.map((t) => t.id) : playlist.trackIds;
     const currentIdx = trackIds.indexOf(activeTrack.id);
 
     if (currentIdx === -1 || trackIds.length === 0) return;
@@ -104,7 +137,7 @@ export default function App() {
       nextTrackId = trackIds[nextIdx];
     }
 
-    const nextTrack = TRACKS.find((t) => t.id === nextTrackId);
+    const nextTrack = allTracks.find((t) => t.id === nextTrackId);
     if (nextTrack) {
       handleSelectTrack(nextTrack);
     }
@@ -115,7 +148,7 @@ export default function App() {
     if (!activeTrack) return;
 
     const playlist = playlists.find((p) => p.id === selectedPlaylistId) || playlists[0];
-    const trackIds = playlist.trackIds;
+    const trackIds = selectedPlaylistId === "all" ? allTracks.map((t) => t.id) : playlist.trackIds;
     const currentIdx = trackIds.indexOf(activeTrack.id);
 
     if (currentIdx === -1 || trackIds.length === 0) return;
@@ -132,16 +165,21 @@ export default function App() {
       prevTrackId = trackIds[prevIdx];
     }
 
-    const prevTrack = TRACKS.find((t) => t.id === prevTrackId);
+    const prevTrack = allTracks.find((t) => t.id === prevTrackId);
     if (prevTrack) {
       handleSelectTrack(prevTrack);
     }
   };
 
   // Favorite toggle helper
-  const handleToggleFavorite = (id: string) => {
+  const handleToggleFavorite = (track: Track) => {
+    // If online track not in TRACKS or customTracks, save it
+    if (!TRACKS.some((t) => t.id === track.id) && !customTracks.some((t) => t.id === track.id)) {
+      setCustomTracks((prev) => [...prev, track]);
+    }
+
     setFavorites((prev) =>
-      prev.includes(id) ? prev.filter((favId) => favId !== id) : [...prev, id]
+      prev.includes(track.id) ? prev.filter((favId) => favId !== track.id) : [...prev, track.id]
     );
   };
 
@@ -168,11 +206,16 @@ export default function App() {
   };
 
   // Add track to custom playlist
-  const handleAddToPlaylist = (trackId: string, playlistId: string) => {
+  const handleAddToPlaylist = (track: Track, playlistId: string) => {
+    // If online track not in TRACKS or customTracks, save it
+    if (!TRACKS.some((t) => t.id === track.id) && !customTracks.some((t) => t.id === track.id)) {
+      setCustomTracks((prev) => [...prev, track]);
+    }
+
     setPlaylists((prev) =>
       prev.map((p) => {
-        if (p.id === playlistId && !p.trackIds.includes(trackId)) {
-          return { ...p, trackIds: [...p.trackIds, trackId] };
+        if (p.id === playlistId && !p.trackIds.includes(track.id)) {
+          return { ...p, trackIds: [...p.trackIds, track.id] };
         }
         return p;
       })
@@ -195,10 +238,12 @@ export default function App() {
   const handleResetCollections = () => {
     if (confirm("Reset all custom playlists and favorite selections?")) {
       setPlaylists(INITIAL_PLAYLISTS);
-      setFavorites(["stream-lofi"]);
+      setCustomTracks([]);
+      setFavorites([]);
       setSelectedPlaylistId("all");
       localStorage.removeItem("zeta_playlists");
       localStorage.removeItem("zeta_favorites");
+      localStorage.removeItem("zeta_custom_tracks");
     }
   };
 
@@ -233,7 +278,7 @@ export default function App() {
           {/* Scrolling Main Body */}
           <div className="w-full" id="tab-body-container">
             <MusicLibrary
-              tracks={TRACKS}
+              tracks={allTracks}
               playlists={playlists}
               selectedPlaylistId={selectedPlaylistId}
               activeTrack={activeTrack}
