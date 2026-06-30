@@ -1,0 +1,6 @@
+{
+  "name": "Zeta Music",
+  "description": "A premium, minimalist pitch-black web music player featuring high-fidelity real-time audio visualization and persistent browser-cached collections.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
